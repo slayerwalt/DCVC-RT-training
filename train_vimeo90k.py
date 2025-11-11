@@ -40,8 +40,8 @@ def pad_to_multiple(frames: torch.Tensor, multiple: int = 16) -> torch.Tensor:
     return F.pad(frames, (0, pad_right, 0, pad_bottom), mode="replicate")
 
 
-class Video90kDataset(Dataset):
-    """Dataset loader for Video-90k sequences producing luminance GOP tensors."""
+class Vimeo90kDataset(Dataset):
+    """Dataset loader for Vimeo-90k sequences producing luminance GOP tensors."""
 
     def __init__(
         self,
@@ -59,11 +59,11 @@ class Video90kDataset(Dataset):
         self.padding_multiple = padding_multiple
 
         if not self.root_dir.exists():
-            raise FileNotFoundError(f"Video-90k root directory not found: {self.root_dir}")
+            raise FileNotFoundError(f"Vimeo-90k root directory not found: {self.root_dir}")
 
         list_path = Path(list_file)
         if not list_path.exists():
-            raise FileNotFoundError(f"Video-90k list file not found: {list_path}")
+            raise FileNotFoundError(f"Vimeo-90k list file not found: {list_path}")
 
         with list_path.open("r", encoding="utf-8") as handle:
             self.sequence_ids = [line.strip() for line in handle if line.strip()]
@@ -78,7 +78,7 @@ class Video90kDataset(Dataset):
 
     def _load_sequence_frames(self, sequence_id: str) -> List[Image.Image]:
         frames: List[Image.Image] = []
-        # Video-90k indices start at 1 and end at 7 for each septuplet.
+        # Vimeo-90k indices start at 1 and end at 7 for each septuplet.
         upper = 1 + self.seq_length
         for index in range(1, upper):
             frame_path = self.root_dir / sequence_id / f"im{index}.png"
@@ -351,11 +351,11 @@ def load_checkpoint(
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train DCVC-RT on Video-90k with CompressAI entropy coding")
-    parser.add_argument("--train-root", type=str, required=True, help="Path to Video-90k training frames root")
-    parser.add_argument("--train-list", type=str, required=True, help="Path to Video-90k training list file")
-    parser.add_argument("--val-root", type=str, help="Path to Video-90k validation frames root")
-    parser.add_argument("--val-list", type=str, help="Path to Video-90k validation list file")
+    parser = argparse.ArgumentParser(description="Train DCVC-RT on Vimeo-90k with CompressAI entropy coding")
+    parser.add_argument("--train-root", type=str, required=True, help="Path to Vimeo-90k training frames root")
+    parser.add_argument("--train-list", type=str, required=True, help="Path to Vimeo-90k training list file")
+    parser.add_argument("--val-root", type=str, help="Path to Vimeo-90k validation frames root")
+    parser.add_argument("--val-list", type=str, help="Path to Vimeo-90k validation list file")
     parser.add_argument("--epochs", type=int, default=200, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=4, help="Training batch size")
     parser.add_argument("--num-workers", type=int, default=8, help="Number of data loading workers")
@@ -367,7 +367,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--val-interval", type=int, default=1, help="Validate every N epochs")
     parser.add_argument("--q-eval", type=str, default="15,31,63", help="Comma separated Q indices for validation")
     parser.add_argument("--gpu-ids", type=str, default=None, help="Comma separated GPU ids for DataParallel")
-    parser.add_argument("--output-dir", type=str, default="logs_video", help="Directory for checkpoints and logs")
+    parser.add_argument("--output-dir", type=str, default="logs_vimeo", help="Directory for checkpoints and logs")
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     return parser.parse_args()
@@ -383,13 +383,13 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     os.makedirs(args.output_dir, exist_ok=True)
-    checkpoint_path = Path(args.output_dir) / "dcvcrt_video_latest.pth"
-    best_path = Path(args.output_dir) / "dcvcrt_video_best.pth"
+    checkpoint_path = Path(args.output_dir) / "dcvcrt_vimeo_latest.pth"
+    best_path = Path(args.output_dir) / "dcvcrt_vimeo_best.pth"
 
     val_root = args.val_root if args.val_root else args.train_root
     val_list = args.val_list if args.val_list else args.train_list
 
-    train_dataset = Video90kDataset(
+    train_dataset = Vimeo90kDataset(
         root_dir=args.train_root,
         list_file=args.train_list,
         crop_size=args.crop_size,
@@ -398,7 +398,7 @@ def main() -> None:
         padding_multiple=args.padding_multiple,
     )
 
-    val_dataset = Video90kDataset(
+    val_dataset = Vimeo90kDataset(
         root_dir=val_root,
         list_file=val_list,
         crop_size=args.crop_size,
